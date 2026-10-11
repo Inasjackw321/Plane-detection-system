@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plane Tracker</title>
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<style>
+  :root {
+    --bg: #0f1419; --panel: #161c23; --line: #26303b; --text: #e6edf3; --muted: #8b98a5;
+    --accent: #39d353; --warn: #f0b429; --err: #f85149; --s2: #58a6ff; --s1: #d2a8ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #app { display: flex; height: 100%; }
+  #side { width: 380px; min-width: 300px; background: var(--panel); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; overflow: hidden; }
+  #map { flex: 1; }
+  header { padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 17px; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+  section { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  section h2 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+  label.inline { flex-direction: row; align-items: center; gap: 6px; }
+  input { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 8px; font: inherit; width: 100%; }
+  input[type=checkbox] { width: auto; }
+  button { background: var(--accent); color: #04130a; border: 0; border-radius: 6px; padding: 8px 12px;
+    font: 600 13px system-ui, sans-serif; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  a { color: var(--s2); }
+  .row { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+  .meta { font-size: 12px; color: var(--muted); }
+  .scroll { flex: 1; overflow: auto; }
+  #status { font: 11px/1.4 ui-monospace, monospace; color: var(--muted); white-space: pre-wrap;
+    max-height: 110px; overflow: auto; margin-top: 8px; }
+  ul.list { padding: 0; margin: 0; list-style: none; }
+  ul.list li { display: flex; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--line); cursor: pointer; align-items: center; }
+  ul.list li:hover { background: #1c242d; }
+  ul.list li.sel { background: #1f2a36; box-shadow: inset 3px 0 0 var(--accent); }
+  ul.list li.off { opacity: .55; }
+  .airport b { display: block; font-size: 14px; }
+  .count { margin-left: auto; text-align: right; font-weight: 700; font-size: 18px; white-space: nowrap; }
+  .count span { display: block; font-size: 10px; font-weight: 400; color: var(--muted); }
+  .badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; color: #0b0f14; }
+  .badge.S2 { background: var(--s2); }
+  .badge.S1 { background: var(--s1); }
+  .tag { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: #3a2f12; color: var(--warn); margin-left: 4px; }
+  .tag.ok { background: #12351c; color: var(--accent); }
+  ul.list img { width: 56px; height: 56px; border-radius: 4px; object-fit: cover; background: #000; }
+  .popup img { width: 240px; height: 240px; display: block; border-radius: 4px; background: #000; }
+  .popup table { margin-top: 6px; font-size: 12px; border-collapse: collapse; }
+  .popup td { padding: 1px 8px 1px 0; vertical-align: top; }
+  .popup td:first-child { color: #666; white-space: nowrap; }
+  .legend { background: #000b; color: #fff; padding: 6px 8px; border-radius: 6px; font-size: 12px; line-height: 1.7; }
+  .legend i { display: inline-block; width: 12px; height: 10px; border: 2px solid; margin-right: 6px; vertical-align: -1px; }
+  .plane-icon { background: #000c; color: #fff; border: 2px solid var(--accent); border-radius: 14px;
+    padding: 2px 8px 2px 6px; font: 600 12px system-ui, sans-serif; white-space: nowrap; cursor: pointer;
+    box-shadow: 0 1px 4px #0008; display: inline-block; }
+  .plane-icon.busy { border-color: var(--warn); }
+  .box-num { background: #000c; color: #fff; border: 0; box-shadow: none; font-weight: 700; padding: 0 4px; font-size: 11px; }
+  .box-num::before { display: none; }
+  .hidden { display: none !important; }
+  @media (max-width: 760px) {
+    #app { flex-direction: column-reverse; }
+    #side { width: 100%; height: 55%; border-right: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <header>
+      <h1>Plane Tracker</h1>
+      <p>Aircraft at airports in Sentinel-1 radar &amp; Sentinel-2 imagery · click an airport to analyse it</p>
+    </header>
+
+    <div id="view-list" class="scroll">
+      <ul class="list" id="airports"></ul>
+      <section class="meta">
+        Each airport is analysed over the newest Sentinel-2 (optical, 10 m) and Sentinel-1
+        (radar, sees through cloud) passes. Aircraft are boxed on the image; box colour gives the size.
+      </section>
+    </div>
+
+    <div id="view-airport" class="hidden" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <section>
+        <div class="row" style="margin-top:0">
+          <button class="ghost" id="back">&larr; Airports</button>
+          <div><b id="a-name"></b><div class="meta" id="a-country"></div></div>
+        </div>
+      </section>
+      <section>
+        <h2>Analyse</h2>
+        <div class="grid">
+          <label>From <input type="date" id="o-start"></label>
+          <label>To <input type="date" id="o-end"></label>
+          <label>Passes per satellite <input type="number" id="o-max" value="4" min="1" max="30"></label>
+          <label>Max tile cloud % <input type="number" id="o-cloud" value="60" min="0" max="100"></label>
+          <label class="inline"><input type="checkbox" id="o-s2" checked> Sentinel-2</label>
+          <label class="inline"><input type="checkbox" id="o-s1" checked> Sentinel-1</label>
+          <label class="inline"><input type="checkbox" id="o-re"> re-run analysed passes</label>
+          <label>Min confidence <input type="number" id="o-conf" value="0" min="0" max="1" step="0.1"></label>
+        </div>
+        <div class="row"><button id="go">Analyse</button><span id="job-state" class="meta"></span></div>
+        <div id="status"></div>
+      </section>
+      <div class="scroll">
+        <section style="padding-bottom:4px"><h2>Passes</h2><div class="meta" id="outline-src"></div></section>
+        <ul class="list" id="scenes"></ul>
+        <section style="padding-bottom:4px">
+          <h2>Aircraft in this pass</h2>
+          <div class="meta" id="scene-info">Pick a pass above.</div>
+        </section>
+        <ul class="list" id="planes"></ul>
+      </div>
+    </div>
+  </aside>
+  <div id="map"></div>
+</div>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
