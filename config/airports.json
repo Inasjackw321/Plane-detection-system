@@ -1,0 +1,45 @@
+{
+  "note": "Airports analysed by Plane Tracker. lat/lon is the point the analysis box is centred on; half_size_m is half the box width (metres). Add or edit entries freely.",
+  "airports": [
+    {
+      "id": "engels",
+      "name": "Engels-2 Air Base",
+      "country": "Russia (Saratov Oblast)",
+      "lat": 51.48058235920676,
+      "lon": 46.21039047158015,
+      "half_size_m": 3500
+    },
+    {
+      "id": "ukrainka",
+      "name": "Ukrainka Air Base",
+      "country": "Russia (Amur Oblast)",
+      "lat": 51.17,
+      "lon": 128.445,
+      "half_size_m": 3500
+    },
+    {
+      "id": "al-udeid",
+      "name": "Al Udeid Air Base",
+      "country": "Qatar",
+      "lat": 25.135669855712127,
+      "lon": 51.31499187889844,
+      "half_size_m": 4000
+    },
+    {
+      "id": "ovda",
+      "name": "Ovda Air Base",
+      "country": "Israel",
+      "lat": 29.936076355953233,
+      "lon": 34.93716758202799,
+      "half_size_m": 3000
+    },
+    {
+      "id": "souda",
+      "name": "Souda Bay / Chania Airport",
+      "country": "Greece (Crete)",
+      "lat": 35.53318652618092,
+      "lon": 24.155319828671995,
+      "half_size_m": 3000
+    }
+  ]
+}
